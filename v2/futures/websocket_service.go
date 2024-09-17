@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bitly/go-simplejson"
+	"github.com/gorilla/websocket"
 )
 
 // Endpoints
@@ -16,6 +17,9 @@ const (
 	baseWsTestnetUrl       = "wss://stream.binancefuture.com/ws"
 	baseCombinedMainURL    = "wss://fstream.binance.com/stream?streams="
 	baseCombinedTestnetURL = "wss://stream.binancefuture.com/stream?streams="
+
+	BaseWsApiMainURL    = "wss://ws-fapi.binance.com/ws-fapi/v1"
+	BaseWsApiTestnetURL = "wss://testnet.binancefuture.com/ws-fapi/v1"
 )
 
 var (
@@ -26,6 +30,9 @@ var (
 	// UseTestnet switch all the WS streams from production to the testnet
 	UseTestnet = false
 	ProxyUrl   = ""
+	// WebsocketTimeoutReadWriteConnection is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
+	// using for websocket API (read/write)
+	WebsocketTimeoutReadWriteConnection = time.Second * 10
 )
 
 func getWsProxyUrl() *string {
@@ -1188,4 +1195,23 @@ func WsUserDataServe(listenKey string, handler WsUserDataHandler, errHandler Err
 		handler(event)
 	}
 	return wsServe(cfg, wsHandler, errHandler)
+}
+
+// WsApiInitReadWriteConn create and serve connection
+func WsApiInitReadWriteConn() (*websocket.Conn, error) {
+	cfg := newWsConfig(getWsApiEndpoint())
+	conn, err := WsGetReadWriteConnection(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, err
+}
+
+// getWsApiEndpoint return the base endpoint of the API WS according the UseTestnet flag
+func getWsApiEndpoint() string {
+	if UseTestnet {
+		return BaseWsApiTestnetURL
+	}
+	return BaseWsApiMainURL
 }

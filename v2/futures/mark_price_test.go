@@ -35,7 +35,7 @@ func (s *premiumIndexServiceTestSuite) TestGetPremiumIndex() {
 
 	res, err := s.client.NewPremiumIndexService().Symbol(symbol).Do(newContext())
 	s.r().NoError(err)
-	e := []*PremiumIndex{&PremiumIndex{
+	e := []*PremiumIndex{{
 		Symbol:          symbol,
 		MarkPrice:       "11012.80409769",
 		LastFundingRate: "-0.03750000",
