@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/adshao/go-binance/v2/common"
 	"github.com/gorilla/websocket"
 	"github.com/jpillora/backoff"
 )
@@ -136,7 +137,8 @@ func (c *ClientWs) read() {
 		}
 
 		msg := struct {
-			ID string `json:"id"`
+			ID    string           `json:"id"`
+			Error *common.APIError `json:"error"`
 		}{}
 		err = json.Unmarshal(message, &msg)
 		if err != nil {
@@ -145,7 +147,11 @@ func (c *ClientWs) read() {
 
 		if call := c.pending.get(msg.ID); call != nil {
 			call.response = message
-			call.done <- nil
+			if msg.Error != nil {
+				call.done <- msg.Error
+			} else {
+				call.done <- nil
+			}
 			close(call.done)
 			c.pending.remove(msg.ID)
 		}
