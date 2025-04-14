@@ -2,10 +2,13 @@ package binance
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	stdjson "encoding/json"
+
+	"github.com/gorilla/websocket"
 )
 
 // Endpoints
@@ -17,10 +20,22 @@ const (
 )
 
 var (
+	// Endpoints
+	BaseWsMainURL          = "wss://stream.binance.com:9443/ws"
+	BaseWsTestnetURL       = "wss://testnet.binance.vision/ws"
+	BaseCombinedMainURL    = "wss://stream.binance.com:9443/stream?streams="
+	BaseCombinedTestnetURL = "wss://testnet.binance.vision/stream?streams="
+	BaseWsApiMainURL       = "wss://ws-api.binance.com:443/ws-api/v3"
+	BaseWsApiTestnetURL    = "wss://testnet.binance.vision/ws-api/v3"
+
 	// WebsocketTimeout is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
 	WebsocketTimeout = time.Second * 60
 	// WebsocketKeepalive enables sending ping/pong messages to check the connection stability
-	WebsocketKeepalive = false
+	WebsocketKeepalive = true
+	// WebsocketTimeoutReadWriteConnection is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
+	// using for websocket API (read/write)
+	WebsocketTimeoutReadWriteConnection = time.Second * 10
+	ProxyUrl                            = ""
 )
 
 // getWsEndpoint return the base endpoint of the WS according the UseTestnet flag
@@ -829,4 +844,39 @@ func WsAllBookTickerServe(handler WsBookTickerHandler, errHandler ErrHandler) (d
 		handler(event)
 	}
 	return wsServe(cfg, wsHandler, errHandler)
+}
+
+// WsApiInitReadWriteConn create and serve connection
+func WsApiInitReadWriteConn() (*websocket.Conn, error) {
+	cfg := newWsConfig(getWsApiEndpoint())
+	conn, err := WsGetReadWriteConnection(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, err
+}
+
+// getWsApiEndpoint return the base endpoint of the API WS according the UseTestnet flag
+func getWsApiEndpoint() string {
+	if UseTestnet {
+		return BaseWsApiTestnetURL
+	}
+	return BaseWsApiMainURL
+}
+
+var WsGetReadWriteConnection = func(cfg *WsConfig) (*websocket.Conn, error) {
+	proxy := http.ProxyFromEnvironment
+	Dialer := websocket.Dialer{
+		Proxy:             proxy,
+		HandshakeTimeout:  45 * time.Second,
+		EnableCompression: false,
+	}
+
+	c, _, err := Dialer.Dial(cfg.Endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
